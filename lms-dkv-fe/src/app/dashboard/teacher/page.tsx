@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
-import router from 'next/dist/shared/lib/router/router';
+//import router from 'next/dist/shared/lib/router/router';
+import { useRouter } from 'next/navigation';
 
 export default function TeacherDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -31,7 +32,12 @@ const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCourses = async () => {
     try {
-      const response = await api.get('/course');
+      //const response = await api.get('/course');
+      //const response = await api.get('/course/my-courses'); // Panggil endpoint khusus untuk guru agar hanya menampilkan kursus miliknya saja
+      const token = localStorage.getItem('access_token'); // Ambil token
+      const response = await api.get('/course/my-courses', {
+        headers: { Authorization: `Bearer ${token}` } // Taruh di parameter kedua untuk GET
+      });
       setCourses(response.data);
     } catch (error) {
       console.error("Gagal mengambil kursus", error);
@@ -66,7 +72,10 @@ const [isSubmitting, setIsSubmitting] = useState(false);
   const handleDelete = async (id: number) => {
   if (confirm('Apakah Anda yakin ingin menghapus kursus ini? Semua data pendaftaran juga akan terhapus.')) {
     try {
-      await api.delete(`/course/${id}`);
+        const token = localStorage.getItem('access_token'); // Ambil token
+      await api.delete(`/course/${id}`, {
+        headers: { Authorization: `Bearer ${token}` } // Taruh di parameter kedua untuk DELETE
+      });
       fetchCourses(); // Refresh daftar
     } catch (error) {
       alert('Gagal menghapus kursus');
@@ -114,30 +123,35 @@ const handleSubmit = async () => {
     alert('Judul kursus terlalu pendek (minimal 5 karakter)');
     return; // Berhenti di sini, tombol tidak akan berubah caption menjadi "Sedang Memproses"
   }
+
+  // Ambil token akses dari localStorage agar variabel 'token' di bawah valid dan terbaca
+    const token = localStorage.getItem('access_token');
+    
   // Jika validasi lolos, baru set submitting jadi true  
   setIsSubmitting(true);
 
   try {
+    // Aturan Axios untuk POST dan PATCH: Headers ditaruh di PARAMETER KETIGA setelah objek data body
     if (isEditMode) {
       // Jika mode EDIT
-      await api.patch(`/course/${selectedCourse.id}`, {
-        title: updateTitle,
-        description: updateDesc,
-      });
+      await api.patch(`/course/${selectedCourse.id}`, 
+        { title: updateTitle, description: updateDesc }, // Parameter kedua (Body data)
+        { headers: { Authorization: `Bearer ${token}` } } // Parameter ketiga (Headers)
+    );
       alert('Kursus berhasil diperbarui!');
     } else {
       // Jika mode TAMBAH
-      await api.post('/course', {
-        title: updateTitle,
-        description: updateDesc,
-      });
+      await api.post('/course', 
+        { title: updateTitle, description: updateDesc }, // Parameter kedua (Body data)
+        { headers: { Authorization: `Bearer ${token}` } } // Parameter ketiga (Headers)
+      );
       alert('Kursus baru berhasil ditambahkan!');
     }
     
     setIsModalOpen(false);
     fetchCourses(); // Tarik data terbaru agar layar langsung update
   } catch (error: any) {
-    // Celah B - Menangani error dari server dengan sopan
+    // Menangani error dari server dengan bahasa yang sopan
     const message = error.response?.data?.message || 'Terjadi kesalahan pada server';
     alert('Gagal: ' + (Array.isArray(message) ? message.join(', ') : message));
   }finally {

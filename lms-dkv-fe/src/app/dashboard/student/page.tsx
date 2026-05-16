@@ -7,30 +7,102 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [enrolledCourses, setEnrolledCourses] = useState<number[]>([]); // Menyimpan ID kursus yang diikuti
 
+//   useEffect(() => {
+//     fetchCourses();
+//   }, []);
+
+//   const fetchCourses = async () => {
+//     try {
+//       const response = await api.get('/course');
+//       setCourses(response.data);
+//     } catch (error) {
+//       console.error("Gagal mengambil materi", error);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+  // ==========================================
+  // AMBIL DATA KATALOG KELAS DAN STATUS ENROLLMENT SEKALIGUS
+  // ==========================================
   useEffect(() => {
-    fetchCourses();
+    const dataInitialization = async () => {
+      setLoading(true);
+      
+      // 1. Ambil Semua Katalog Materi (Menggantikan fungsi fetchCourses lama yang terkomentari)
+      try {
+        const courseResponse = await api.get('/course');
+        setCourses(courseResponse.data);
+      } catch (error) {
+        console.error("Gagal mengambil materi", error);
+      }
+
+      // 2. Ambil Riwayat Kelas yang Sudah Diikuti oleh Student Ini dari Database
+      try {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          // Memanggil endpoint GET /enrollment/my-courses yang sudah kamu buat di backend
+          const response = await api.get('/enrollment/my-courses', {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+
+          // Data dari backend berbentuk array objek enrollment. Kita ekstrak ambil courseId-nya saja.
+          // Format response: [{ id: 1, courseId: 5, ... }, { id: 2, courseId: 12, ... }]
+          const ids = response.data.map((item: any) => item.courseId);
+          
+          // Simpan kumpulan ID yang sudah diikuti ke dalam state pembungkus
+          setEnrolledCourses(ids);
+        }
+      } catch (err) {
+        console.error("Gagal memuat status pendaftaran kelas siswa:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    dataInitialization();
   }, []);
 
-  const fetchCourses = async () => {
-    try {
-      const response = await api.get('/course');
-      setCourses(response.data);
-    } catch (error) {
-      console.error("Gagal mengambil materi", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEnroll = (courseId: number, courseTitle: string) => {
-    // Simulasi atau integrasi ke endpoint pendaftaran jika sudah ada nanti
-    if (enrolledCourses.includes(courseId)) {
-      alert(`Anda sudah terdaftar di kelas ${courseTitle}`);
-      return;
-    }
+//   const handleEnroll = (courseId: number, courseTitle: string) => {
+//     // Simulasi atau integrasi ke endpoint pendaftaran jika sudah ada nanti
+//     if (enrolledCourses.includes(courseId)) {
+//       alert(`Anda sudah terdaftar di kelas ${courseTitle}`);
+//       return;
+//     }
     
-    setEnrolledCourses([...enrolledCourses, courseId]);
-    alert(`Selamat! Anda berhasil mendaftar di kelas: ${courseTitle}`);
+//     setEnrolledCourses([...enrolledCourses, courseId]);
+//     alert(`Selamat! Anda berhasil mendaftar di kelas: ${courseTitle}`);
+//   };
+
+  // ==========================================
+  // PROSES MENGIKUTI KELAS DAN SIMPAN KE DATABASE
+  // ==========================================
+  const handleEnroll = async (courseId: number, courseTitle: string) => {
+    try {
+      // 1. Ambil token akses dari localStorage untuk membuktikan siswa ini sah
+      const token = localStorage.getItem('access_token');
+      
+      // 2. Tembak endpoint Backend resmi kamu
+      const response = await api.post(
+        '/enrollment', 
+        { courseId: Number(courseId) }, // Pastikan dikirim dalam bentuk Number murni sesuai DTO NestJS
+        {
+          headers: {
+            Authorization: `Bearer ${token}` // Selipkan token di Header
+          }
+        }
+      );
+
+      // 3. Jika sukses dimasukkan ke database, masukkan ID kursus ini ke state lokal
+      setEnrolledCourses((prev) => [...prev, courseId]);
+      alert(`🎉 Selamat! Anda berhasil mendaftar di kelas: ${courseTitle}`);
+      
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Gagal mengikuti kelas.";
+      alert(`⚠️ ${errorMsg}`);
+    }
   };
 
   return (
@@ -71,6 +143,7 @@ export default function StudentDashboard() {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed' 
                             : 'bg-blue-600 text-white hover:bg-blue-700'
                         }`}
+                        disabled={isEnrolled} // Mencegah tombol di-klik ganda jika sudah terdaftar
                       >
                         {isEnrolled ? '✓ Sudah Diikuti' : 'Ikuti Kelas'}
                       </button>

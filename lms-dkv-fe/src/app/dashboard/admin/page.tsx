@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [teachers, setTeachers] = useState([]); // State tambahan untuk menampung daftar guru
 
   // Ambil nama admin yang sedang login dari localStorage
   useEffect(() => {
@@ -18,7 +19,20 @@ export default function AdminDashboard() {
       const parsed = JSON.parse(storedUser);
       setAdminName(parsed.name || 'Admin');
     }
+    fetchTeachers(); // Ambil daftar guru saat halaman dimuat
   }, []);
+
+  // Fungsi tambahan untuk mengambil daftar guru dari database agar panel admin lebih informatif
+  const fetchTeachers = async () => {
+    try {
+      const response = await api.get('/user'); // Sesuaikan dengan endpoint get semua user di backend kamu
+      // Filter hanya user yang memiliki role TEACHER
+      const filteredTeachers = response.data.filter((u: any) => u.role === 'TEACHER');
+      setTeachers(filteredTeachers);
+    } catch (err) {
+      console.error("Gagal memuat daftar pengajar", err);
+    }
+  };
 
   const handleCreateTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +54,7 @@ export default function AdminDashboard() {
       setName('');
       setEmail('');
       setPassword('');
+      fetchTeachers(); // Refresh daftar tabel guru setelah berhasil menambah data baru
     } catch (err: any) {
       setError(
         err.response?.data?.message || 
@@ -68,12 +83,8 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-slate-400">Selamat datang, <strong className="text-blue-400">{adminName}</strong></span>
-          <button 
-            onClick={handleLogout}
-            className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold px-3 py-1.5 rounded-xl border border-red-500/20 transition"
-          >
-            Keluar
-          </button>
+          {/* CATATAN: Jika layout.tsx kamu sudah punya tombol logout global, tombol di bawah ini bisa kamu komentari/hapus */}
+
         </div>
       </nav>
 
@@ -84,7 +95,7 @@ export default function AdminDashboard() {
           <p className="text-slate-400 text-sm mt-1">Daftarkan dan otorisasi guru baru agar dapat mengelola kelas dan materi DKV.</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
           
           {/* INFO KANAN/KIRI */}
           <div className="md:col-span-1 space-y-4">
@@ -169,8 +180,41 @@ export default function AdminDashboard() {
               </button>
             </form>
           </div>
-
         </div>
+
+        {/* TABEL DAFTAR GURU AKTIF (POIN PLUS SAAT DEMO) */}
+        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl shadow-xl backdrop-blur-sm">
+          <h2 className="text-lg font-bold text-white mb-4 tracking-tight text-left">Daftar Pengajar Terverifikasi</h2>
+          {teachers.length === 0 ? (
+            <p className="text-slate-500 text-sm text-left italic">Belum ada akun pengajar tambahan di database.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-slate-900 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-white/5">
+                  <tr>
+                    <th className="p-3">Nama Lengkap</th>
+                    <th className="p-3">Email Akses</th>
+                    <th className="p-3">Status Sistem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {teachers.map((t: any) => (
+                    <tr key={t.id} className="hover:bg-white/5 transition">
+                      <td className="p-3 font-semibold text-white">{t.name}</td>
+                      <td className="p-3 text-slate-400">{t.email}</td>
+                      <td className="p-3">
+                        <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                          {t.role}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
       </main>
     </div>
   );
