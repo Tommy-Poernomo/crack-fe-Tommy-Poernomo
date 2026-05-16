@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   // Fungsi tambahan untuk mengambil daftar guru dari database agar panel admin lebih informatif
   const fetchTeachers = async () => {
     try {
-      const response = await api.get('/user'); // Sesuaikan dengan endpoint get semua user di backend kamu
+      const response = await api.get('auth/users'); // Sesuaikan dengan endpoint get semua user di backend
       // Filter hanya user yang memiliki role TEACHER
       const filteredTeachers = response.data.filter((u: any) => u.role === 'TEACHER');
       setTeachers(filteredTeachers);
@@ -83,8 +83,6 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-slate-400">Selamat datang, <strong className="text-blue-400">{adminName}</strong></span>
-          {/* CATATAN: Jika layout.tsx kamu sudah punya tombol logout global, tombol di bawah ini bisa kamu komentari/hapus */}
-
         </div>
       </nav>
 
