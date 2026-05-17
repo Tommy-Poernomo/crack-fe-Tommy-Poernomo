@@ -12,6 +12,13 @@ export default function AdminDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [teachers, setTeachers] = useState([]); // State tambahan untuk menampung daftar guru
 
+    // STATE UNTUK MODAL EDIT (UPDATE)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTeacherId, setEditingTeacherId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+
   // Ambil nama admin yang sedang login dari localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -22,10 +29,10 @@ export default function AdminDashboard() {
     fetchTeachers(); // Ambil daftar guru saat halaman dimuat
   }, []);
 
-  // Fungsi tambahan untuk mengambil daftar guru dari database agar panel admin lebih informatif
+  // Fungsi untuk mengambil daftar guru dari database agar panel admin lebih informatif
   const fetchTeachers = async () => {
     try {
-      const response = await api.get('auth/users'); // Sesuaikan dengan endpoint get semua user di backend
+      const response = await api.get('auth/users'); // Memanggil endpoint get semua user di backend
       // Filter hanya user yang memiliki role TEACHER
       const filteredTeachers = response.data.filter((u: any) => u.role === 'TEACHER');
       setTeachers(filteredTeachers);
@@ -34,6 +41,9 @@ export default function AdminDashboard() {
     }
   };
 
+  // ==========================================
+  // 1. PROSES CREATE: TAMBAH GURU BARU
+  // ==========================================
   const handleCreateTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -41,7 +51,7 @@ export default function AdminDashboard() {
     setIsSubmitting(true);
 
     try {
-      // Menembak endpoint register bawaan NestJS yang sudah kita perbaiki DTO-nya
+      // Menembak endpoint register bawaan NestJS
       await api.post('/auth/register', {
         name,
         email,
@@ -62,6 +72,61 @@ export default function AdminDashboard() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+// ==========================================
+  // 2. PROSES UPDATE: MODAL TRIGGER & SUBMIT
+  // ==========================================
+  const openEditModal = (teacher: any) => {
+    setEditingTeacherId(teacher.id);
+    setEditName(teacher.name);
+    setEditEmail(teacher.email);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsEditing(true); // <-- Aktifkan loading saat mulai mengirim data
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      // Menembak endpoint PATCH/PUT users di backend bawaan
+      await api.patch(`/auth/users/${editingTeacherId}`, {
+        name: editName,
+        email: editEmail,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert('🎉 Data pengajar berhasil diperbarui!');
+      setIsEditModalOpen(false);
+      fetchTeachers(); // Refresh data tabel
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal memperbarui data pengajar.');
+    } finally {
+      setIsEditing(false); // <-- Matikan loading setelah proses selesai (sukses/gagal)
+    }
+  };
+
+  // ==========================================
+  // 3. PROSES DELETE: HAPUS AKUN GURU
+  // ==========================================
+  const handleDeleteTeacher = async (id: number, teacherName: string) => {
+    if (confirm(`⚠️ Apakah Anda yakin ingin menghapus akun pengajar "${teacherName}"?\nSemua kelas yang dibuat oleh pengajar ini mungkin akan ikut terhapus.`)) {
+      try {
+        const token = localStorage.getItem('access_token');
+        // Menembak endpoint DELETE users di backend
+        await api.delete(`/auth/users/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        alert('✅ Akun pengajar berhasil dihapus dari sistem.');
+        fetchTeachers(); // Refresh data tabel
+      } catch (err: any) {
+        alert(err.response?.data?.message || 'Gagal menghapus pengajar.');
+      }
     }
   };
 
@@ -180,7 +245,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* TABEL DAFTAR GURU AKTIF (POIN PLUS SAAT DEMO) */}
+        {/* TABEL DAFTAR GURU AKTIF */}
         <div className="bg-white/5 border border-white/10 p-6 rounded-3xl shadow-xl backdrop-blur-sm">
           <h2 className="text-lg font-bold text-white mb-4 tracking-tight text-left">Daftar Pengajar Terverifikasi</h2>
           {teachers.length === 0 ? (
@@ -205,6 +270,21 @@ export default function AdminDashboard() {
                           {t.role}
                         </span>
                       </td>
+                      {/* KOLOM AKSI EDIT DAN DELETE */}
+                      <td className="p-3 text-center space-x-2">
+                        <button
+                          onClick={() => openEditModal(t)}
+                          className="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500 hover:text-white px-2.5 py-1 rounded-md transition font-medium"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTeacher(t.id, t.name)}
+                          className="text-xs bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white px-2.5 py-1 rounded-md transition font-medium"
+                        >
+                          ❌ Hapus
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -214,6 +294,64 @@ export default function AdminDashboard() {
         </div>
 
       </main>
+
+      {/* ==========================================
+          MODAL INTERAKTIF UNTUK EDIT DATA GURU (UPDATE)
+          ========================================== */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-white/10 w-full max-w-md p-6 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-lg font-bold text-white mb-2 text-left">Ubah Informasi Pengajar</h3>
+            <p className="text-xs text-slate-400 text-left mb-6">Perbarui nama resmi atau alamat email koordinasi guru terkait.</p>
+
+            <form onSubmit={handleUpdateTeacher} className="space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Nama Lengkap</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full p-3 bg-slate-950 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-sm"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Email Akses</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full p-3 bg-slate-950 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-sm"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditing} // <-- Mencegah spam klik saat proses berlangsung
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+    isEditing
+      ? 'bg-blue-400/50 text-white/50 cursor-not-allowed'
+      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white'
+  }`}
+>
+  {isEditing ? 'Sedang Memproses...' : 'Simpan Perubahan'}
+</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

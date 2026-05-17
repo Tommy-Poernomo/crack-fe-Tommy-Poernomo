@@ -13,7 +13,11 @@ export default function TeacherDashboard() {
   const [updateTitle, setUpdateTitle] = useState('');
   const [updateDesc, setUpdateDesc] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
-const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+  const [students, setStudents] = useState([]);
+const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+const [activeCourseTitle, setActiveCourseTitle] = useState('');
 
   useEffect(() => {
     // Ambil data user dari localStorage yang disimpan ketika login
@@ -92,12 +96,24 @@ const openAddModal = () => {
   setIsModalOpen(true);
 };
 
+const fetchCourseStudents = async (courseId: number, courseTitle: string) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    const response = await api.get(`/course/${courseId}/students`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    // Response data berisi array dari enrollment, kita map atau langsung simpan
+    setStudents(response.data);
+    setActiveCourseTitle(courseTitle);
+    setIsStudentModalOpen(true);
+  } catch (error) {
+    alert('Gagal mengambil daftar siswa');
+  }
+};
+
 // Gabungkan fungsi simpan (Create & Update)
 const handleSubmit = async () => {
 //   // --- VALIDASI (Anti-Cacat) ---
-//   if (updateTitle.length < 5) {
-//     return alert('Judul kursus minimal 5 karakter!');
-//   }
 //   if (!updateDesc) {
 //     return alert('Deskripsi tidak boleh kosong!');
 //   }
@@ -126,7 +142,7 @@ const handleSubmit = async () => {
 
   // Ambil token akses dari localStorage agar variabel 'token' di bawah valid dan terbaca
     const token = localStorage.getItem('access_token');
-    
+
   // Jika validasi lolos, baru set submitting jadi true  
   setIsSubmitting(true);
 
@@ -234,6 +250,13 @@ const handleSubmit = async () => {
                 <button onClick={() => handleDelete(course.id)}
   className="px-4 py-2 text-red-400 hover:text-red-600 transition">Hapus</button>
               </div>
+              {/* TOMBOL LIHAT SISWA BARU */}
+  <button 
+    onClick={() => fetchCourseStudents(course.id, course.title)}
+    className="w-full bg-slate-100 text-slate-700 py-2 rounded-lg font-medium hover:bg-slate-200 text-xs text-center border border-slate-200"
+  >
+    👥 Lihat Daftar Siswa ({course.enrollments?.length || 0})
+  </button>
             </div>
           ))}
         </div>
@@ -259,10 +282,10 @@ const handleSubmit = async () => {
                 <div className="flex gap-3 pt-4">
                   <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-slate-500 font-medium">Batal</button>
                   <button 
-  onClick={handleSubmit} 
-  disabled={isSubmitting} // Tombol mati saat proses kirim
-  className={`flex-1 py-3 rounded-xl font-bold text-white transition ${
-    isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                    onClick={handleSubmit} 
+                    disabled={isSubmitting} // Tombol mati saat proses kirim
+                    className={`flex-1 py-3 rounded-xl font-bold text-white transition ${
+                    isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
   }`}
 >
   {isSubmitting ? 'Sedang Memproses...' : 'Simpan'}
@@ -272,6 +295,57 @@ const handleSubmit = async () => {
             </div>
           </div>
         )}
+        {/* MODAL DAFTAR SISWA */}
+{isStudentModalOpen && (
+  <div className="fixed inset-0 bg-blue-900/50 flex items-center justify-center p-4 backdrop-blur-sm z-50">
+    <div className="bg-white w-full max-w-lg p-8 rounded-3xl shadow-2xl">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-blue-900">Daftar Siswa Terdaftar</h2>
+          <p className="text-xs text-slate-500 mt-1">Kelas: <strong className="text-blue-600">{activeCourseTitle}</strong></p>
+        </div>
+        <button 
+          onClick={() => setIsStudentModalOpen(false)} 
+          className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="mt-4 max-h-60 overflow-y-auto border border-blue-50 rounded-xl">
+        {students.length === 0 ? (
+          <p className="p-6 text-slate-400 text-sm text-center italic">Belum ada siswa yang bergabung di kelas ini.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="bg-blue-50 text-xs font-bold text-blue-900 border-b border-blue-100">
+              <tr>
+                <th className="p-3">Nama Siswa</th>
+                <th className="p-3">Email</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {students.map((item: any) => (
+                <tr key={item.id} className="hover:bg-slate-50 transition">
+                  <td className="p-3 font-semibold text-slate-800">{item.user?.name}</td>
+                  <td className="p-3 text-slate-500 text-xs">{item.user?.email}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      
+      <div className="flex justify-end pt-4 mt-2">
+        <button 
+          onClick={() => setIsStudentModalOpen(false)} 
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold"
+        >
+          Selesai
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
