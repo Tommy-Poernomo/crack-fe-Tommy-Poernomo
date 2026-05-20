@@ -140,6 +140,9 @@ src/
 ### Public Landing Page
 ![Landing Page](https://placehold.co/600x400?text=Insert+Landing+Page+Screenshot+Here)
 
+### Login page
+![Login Page Layout](./assets/Login%20Page.jpg)
+
 ### Admin Panel & Teacher Management
 ![Admin CRUD](https://placehold.co/600x400?text=Insert+Admin+Panel+Screenshot+Here)
 
@@ -286,7 +289,7 @@ All API requests must be prefixed with `http://localhost:3000/`. Protected route
 
 ## 💡 Demo Guide for Team Lead Evaluation
 
-When demonstrating this platform to the RevoU Team Lead, follow this exact workflow to showcase the robust Full-CRUD functionality:
+When demonstrating this platform, follow this exact workflow to showcase the robust Full-CRUD functionality:
 
 1.  **Public Layer:** Visit `http://localhost:3001/` to verify the public catalog successfully fetches live courses from the database without requiring authentication.
 2.  **Admin Flow:** Log in as Admin -> Create a new Teacher account -> Edit the Teacher's title -> Verify the live updates on the data table.
