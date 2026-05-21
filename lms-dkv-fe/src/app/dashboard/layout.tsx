@@ -25,15 +25,16 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-blue-50 flex flex-col">
+    <div className="min-h-screen bg-blue-50 flex flex-col flex-1">
       {/* NAVBAR ATAS (Nuansa Biru DKV) */}
-      <nav className="bg-blue-950 text-white px-8 py-4 flex justify-between items-center shadow-lg">
+      <nav className="sticky top-0 z-50 bg-blue-950 text-white px-8 py-4 flex justify-between items-center shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg font-bold text-sm tracking-wider">DKV</div>
-          <span className="font-semibold text-lg tracking-wide">LMS Ruang Kreatif</span>
+          <div className="bg-blue-600 p-2 rounded-lg font-bold text-sm tracking-wider">DKV LMS</div>
+          {/*<span className="font-semibold text-lg tracking-wide">DKV LMS</span> */}
         </div>
         
         <div className="flex items-center gap-6">
+          <span className="text-xs text-slate-400">Masuk sebagai</span>
           <span className="text-sm bg-blue-900/50 px-4 py-2 rounded-full border border-blue-800">
             👤 {name || 'Pengguna'}
           </span>
@@ -50,6 +51,10 @@ export default function DashboardLayout({
       <main className="flex-1">
         {children}
       </main>
-    </div>
+      {/* FOOTER (Sticky Mode Enabled) */}
+      <footer className="sticky border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400 w-full mt-auto">
+        &copy; {new Date().getFullYear()} Tommy Poernomo. All Rights Reserved.
+      </footer>
+      </div>
   );
 }

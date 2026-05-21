@@ -11,11 +11,23 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState(''); // <-- state konfirmasi password
   const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+// <-- VALIDASI SISI KLIEN: Memastikan kedua password cocok sebelum menembak API
+    if (password !== confirmPassword) {
+      setError('Konfirmasi kata sandi tidak cocok dengan kata sandi utama!');
+      return;
+    }
+
+    // Validasi panjang karakter minimal
+    if (password.length < 8) {
+      setError('Kata sandi terlalu pendek, minimal wajib 8 karakter!');
+      return;
+    }    
     setIsSubmitting(true);
 
     try {
@@ -101,6 +113,19 @@ export default function RegisterPage() {
               placeholder="Minimal 8 karakter" 
               value={password}
               onChange={(e) => setPassword(e.target.value)} 
+              className="w-full p-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-white/30 text-sm transition"
+              required 
+            />
+          </div>
+
+{/* <-- FIELD: Input Konfirmasi Kata Sandi */}
+          <div>
+            <label className="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1 text-left">Konfirmasi Kata Sandi</label>
+            <input 
+              type="password" 
+              placeholder="Ulangi kata sandi Anda" 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)} 
               className="w-full p-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-white/30 text-sm transition"
               required 
             />

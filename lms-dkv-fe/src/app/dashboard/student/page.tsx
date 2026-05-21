@@ -1,50 +1,70 @@
 'use client';
 import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
+import Link from 'next/link'; // ✨ IMPORT LINK UNTUK NAVIGASI MASUK KELAS
 
 export default function StudentDashboard() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [enrolledCourses, setEnrolledCourses] = useState<number[]>([]); // Menyimpan ID kursus yang diikuti
   const [completedCourses, setCompletedCourses] = useState<number[]>([]); // Menyimpan ID kursus yang sudah selesai
+  
+  // ✨ STATE BARU: Menyimpan teks pencarian yang diketik siswa
+  const [searchQuery, setSearchQuery] = useState('');
 
   // ==========================================
-  // AMBIL DATA KATALOG KELAS DAN STATUS ENROLLMENT
+  // AMBIL DATA KATALOG KELAS DENGAN FITUR PENCARIAN & STATUS ENROLLMENT
+  // ==========================================
+  // ✨ MODIFIKASI: Mengubah dataInitialization menjadi fungsi mandiri agar bisa dipanggil ulang saat mencari data
+  const dataInitialization = async (keyword = '') => {
+    setLoading(true);
+    
+    // 1. Ambil Katalog Materi Berdasarkan Kata Kunci Pencarian
+    try {
+      const response = await api.get(`/course?search=${keyword}`);
+      setCourses(response.data);
+    } catch (error) {
+      console.error("Gagal mengambil materi", error);
+    }
+
+    // 2. Ambil Riwayat Kelas yang Sudah Diikuti oleh Student Ini dari Database
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        const response = await api.get('/enrollment/my-courses', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const ids = response.data.map((item: any) => item.courseId);
+        setEnrolledCourses(ids);
+      }
+    } catch (err) {
+      console.error("Gagal memuat status pendaftaran kelas siswa:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+// ==========================================
+  // DEBOUNCE REALTIME SEARCH TRACKER
   // ==========================================
   useEffect(() => {
-    const dataInitialization = async () => {
-      setLoading(true);
-      
-      // 1. Ambil Semua Katalog Materi
-      try {
-        const courseResponse = await api.get('/course');
-        setCourses(courseResponse.data);
-      } catch (error) {
-        console.error("Gagal mengambil materi", error);
-      }
+    // Setel timer tunggu selama 500 milidetik (0.5 detik) setelah ketikan berhenti
+    const delayDebounceFn = setTimeout(() => {
+      dataInitialization(searchQuery);
+    }, 500);
 
-      // 2. Ambil Riwayat Kelas yang Sudah Diikuti oleh Student Ini dari Database
-      try {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-          const response = await api.get('/enrollment/my-courses', {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
+    // Bersihkan timer jika siswa kembali menekan tombol keyboard sebelum 500ms tercapai
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]); // Efek ini otomatis berjalan setiap kali isi kotak input berubah
 
-          const ids = response.data.map((item: any) => item.courseId);
-          setEnrolledCourses(ids);
-        }
-      } catch (err) {
-        console.error("Gagal memuat status pendaftaran kelas siswa:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    dataInitialization();
-  }, []);
+  // ✨ HANDLER BARU: Memproses form submit pencarian ketika tombol "Cari" ditekan
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    //dataInitialization(searchQuery);
+  };
 
   // ==========================================
   // PROSES MENGIKUTI KELAS DAN SIMPAN KE DATABASE
@@ -115,9 +135,33 @@ export default function StudentDashboard() {
   return (
     <div className="p-8 max-w-5xl mx-auto">
       {/* HEADER DASHBOARD */}
-      <header className="mb-8 pt-4">
-        <h2 className="text-2xl font-bold text-blue-900 text-left">Eksplorasi Ruang Belajar</h2>
-        <p className="text-slate-500 text-left text-sm">Pilih dan ikuti kelas desain, fotografi, dan seni digital terbaik.</p>
+      <header className="mb-8 pt-4 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-900 text-left">Eksplorasi Ruang Belajar</h2>
+          <p className="text-slate-500 text-left text-sm">Pilih dan ikuti kelas/materi yang tersedia.</p>
+        </div>
+
+{/* 🔍 KOTAK PENCARIAN REAL-TIME DENGAN PENGAMAN DEBOUNCE */}
+        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Ketik untuk mencari kelas... 🔍"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)} // Mengubah state langsung memicu debounce useEffect
+              className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm w-full focus:outline-none focus:border-blue-500 shadow-sm text-slate-800"
+            />
+          </div>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')} // Mengosongkan text otomatis memicu query ulang data awal
+              className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold text-sm rounded-xl transition shadow-sm"
+            >
+              Reset
+            </button>
+          )}
+        </form>
       </header>
 
       {/* DAFTAR MATERI */}
@@ -135,12 +179,25 @@ export default function StudentDashboard() {
                   <div className="h-3 bg-gradient-to-r from-blue-500 to-indigo-600" />
                   
                   <div className="p-6 flex-1 flex flex-col justify-between">
-                    <div>
+                    <div className="flex-1">
                       {/* MENAMPILKAN NAMA GURU */}
                       <span className="text-xs text-slate-500 font-medium">
                         👨‍🏫 Pengajar: {course.teacher?.name || 'Pengajar'}
                       </span>
-                      <h3 className="text-lg font-bold text-blue-950 mt-3 line-clamp-1">{course.title}</h3>
+
+                      {/* ✨ JUDUL KELAS BISA DIKLIK JIKA SUDAH DAFTAR (ENROLLED) */}
+                      {isEnrolled ? (
+                        <Link href={`/dashboard/student/courses/${course.id}`}>
+                          <h3 className="text-lg font-bold text-blue-950 mt-3 line-clamp-1 hover:text-blue-600 hover:underline cursor-pointer transition">
+                            📖 {course.title}
+          </h3>
+                        </Link>
+                      ) : (
+                        <h3 className="text-lg font-bold text-blue-950 mt-3 line-clamp-1" title="Ikuti kelas terlebih dahulu untuk melihat materi">
+                          🔒 {course.title}
+                        </h3>
+                      )}
+
                       <p className="text-slate-600 text-sm mt-2 line-clamp-3 leading-relaxed">{course.description}</p>
                     </div>
 
@@ -201,7 +258,11 @@ export default function StudentDashboard() {
           </div>
         ) : (
           <div className="text-center p-12 border-2 border-dashed border-blue-200 rounded-2xl bg-white">
-            <p className="text-slate-500">Belum ada kelas yang dibuka oleh pengajar saat ini.</p>
+            {searchQuery ? (
+              <p className="text-slate-500">Kelas dengan kata kunci "{searchQuery}" tidak ditemukan di database.</p>
+            ) : (
+              <p className="text-slate-500">Belum ada kelas yang dibuka oleh pengajar saat ini.</p>
+            )}
           </div>
         )}
       </section>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
 //import router from 'next/dist/shared/lib/router/router';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function TeacherDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -21,11 +22,10 @@ const [activeCourseTitle, setActiveCourseTitle] = useState('');
 
   useEffect(() => {
     // Ambil data user dari localStorage yang disimpan ketika login
-    // const savedUser = localStorage.getItem('user');
-    // if (savedUser) {
-    //   setUser(JSON.parse(savedUser));
-    //   fetchCourses();
-    // }
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
     const token = localStorage.getItem('access_token');
   if (!token) {
     router.push('/login'); // Tendang balik ke login jika tidak ada token
@@ -113,26 +113,6 @@ const fetchCourseStudents = async (courseId: number, courseTitle: string) => {
 
 // Gabungkan fungsi simpan (Create & Update)
 const handleSubmit = async () => {
-//   // --- VALIDASI (Anti-Cacat) ---
-//   if (!updateDesc) {
-//     return alert('Deskripsi tidak boleh kosong!');
-//   }
-
-//   try {
-//     if (isEditMode && selectedCourse) {
-//       // Logic Update
-//       await api.patch(`/course/${selectedCourse.id}`, { title: updateTitle, description: updateDesc });
-//     } else {
-//       // Logic Create
-//       await api.post('/course', { title: updateTitle, description: updateDesc });
-//     }
-    
-//     setIsModalOpen(false);
-//     fetchCourses();
-//   } catch (error: any) {
-//     alert(error.response?.data?.message || 'Gagal menyimpan data');
-//   }
-// Validasi Sederhana (Celah B - Mencegah data kotor masuk ke server)
 
 // Validasi dulu sebelum mengubah status tombol
   if (updateTitle.length < 5) {
@@ -176,57 +156,14 @@ const handleSubmit = async () => {
   }
 };
 
-/*  return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <header className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">Dashboard Pengajar</h1>
-          <p className="text-slate-500">Halo, {user?.name}. Kelola materi DKV Anda di sini.</p>
-        </div>
-        <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
-          + Kursus Baru
-        </button>
-      </header>
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4 text-slate-700 text-left">Daftar Kursus Anda</h2>
-        
-        {loading ? (
-          <p>Sedang memuat data...</p>
-        ) : courses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {courses.map((course: any) => (
-              <div key={course.id} className="border p-5 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-                <h3 className="text-lg font-bold text-indigo-900 text-left">{course.title}</h3>
-                <p className="text-slate-600 text-sm mt-2 text-left line-clamp-2">{course.description}</p>
-                
-                <div className="mt-4 flex gap-2">
-                  {/* Tombol Update yang akan kita fungsikan nanti */ /*}
-                  <button className="flex-1 bg-amber-50 text-amber-700 px-3 py-2 rounded-md font-medium hover:bg-amber-100 transition">
-                    Edit Kursus (Update)
-                  </button>
-                  <button className="bg-red-50 text-red-600 px-3 py-2 rounded-md hover:bg-red-100">
-                    Hapus
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center p-10 border-2 border-dashed rounded-xl">
-            <p className="text-slate-500">Anda belum memiliki kursus. Mulai buat kursus pertama Anda!</p>
-          </div>
-        )}
-      </section>
-    </div>
-  ); */
   return (
     <div className="min-h-screen bg-blue-50 p-8"> {/* Warna dasar Biru */}
       <div className="max-w-5xl mx-auto">
         <header className="flex justify-between items-center mb-8 pt-4">
             <div>
                 <h2 className="text-2xl font-bold text-blue-900 text-left">Ruang Kerja Pengajar</h2>
-                <p className="text-slate-500 text-left text-sm">Kelola modul, materi, dan kelas fotografi/desain Anda.</p>
+                <p className="text-slate-500 text-left text-sm">Kelola modul, materi, dan kelas DKV Anda.</p>
             </div>
           
           <button onClick={openAddModal} className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition shadow-md">
@@ -234,11 +171,44 @@ const handleSubmit = async () => {
           </button>
         </header>
 
+{/* <-- VALIDASI UTAMA: Menangani kondisi layar loading, layar data kosong, dan layar daftar kelas */}
+        {loading ? (
+          <p className="text-left text-slate-500 italic text-sm">Menyelaraskan materi...</p>
+        ) : courses.length === 0 ? (
+          // <-- BLOK BARU: Pesan informatif modern jika guru baru masuk dan belum punya kelas
+          <div className="text-center p-12 bg-white rounded-3xl border-2 border-dashed border-blue-200 max-w-md mx-auto my-8 shadow-sm">
+            <span className="text-4xl">📚</span>
+            <h3 className="text-base font-bold text-blue-900 mt-4">Belum Ada Materi Tersedia</h3>
+            <p className="text-xs text-slate-400 mt-1 mb-6 leading-relaxed">
+              Anda belum menerbitkan materi kelas DKV apa pun. Tekan tombol di bawah untuk membuat ruang belajar pertama Anda.
+            </p>
+            <button onClick={openAddModal} className="bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold px-4 py-2.5 rounded-xl transition">
+              Buat Kelas Sekarang
+            </button>
+          </div>
+        ) : (
+          // <-- BLOK RENDER DATA: Hanya akan muncul ke layar jika jumlah array "courses" di atas lebih dari 0
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-          {courses.map((course: any) => (
-            <div key={course.id} className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
-              <h3 className="text-xl font-bold text-blue-800">{course.title}</h3>
-              <p className="text-slate-600 mt-2 mb-6 line-clamp-2">{course.description}</p>
+{courses.map((course: any) => (
+  <div key={course.id} className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100 flex flex-col justify-between">
+    <div>
+      {/* Membuat judul bisa diklik untuk masuk ke dalam kelas */}
+      <Link href={`/dashboard/teacher/courses/${course.id}`} className="group">
+        <h3 className="text-xl font-bold text-blue-800 group-hover:text-blue-600 group-hover:underline transition text-left">
+          📘 {course.title}
+        </h3>
+      </Link>
+      <p className="text-slate-600 mt-2 mb-6 line-clamp-2 text-sm text-left">{course.description}</p>
+    </div>
+    
+    <div className="space-y-3">
+      {/* TOMBOL UTAMA BARU: Kelola Isi Konten Kelas */}
+      <Link 
+        href={`/dashboard/teacher/courses/${course.id}`}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-semibold text-xs text-center block transition shadow-sm"
+      >
+        ⚙️ Kelola Isi Materi & Modul
+      </Link>
               
               <div className="flex gap-3">
                 <button 
@@ -258,8 +228,10 @@ const handleSubmit = async () => {
     👥 Lihat Daftar Siswa ({course.enrollments?.length || 0})
   </button>
             </div>
+            </div>
           ))}
         </div>
+        )}
 
         {/* MODAL UPDATE */}
         {isModalOpen && (

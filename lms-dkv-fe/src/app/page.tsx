@@ -14,7 +14,7 @@ export default function LandingPage() {
         const response = await api.get('/course');
         setCourses(response.data);
       } catch (error) {
-        console.error("Gagal memuat katalog publik:", error);
+        console.error("Gagal memuat katalog Kelas/Materi:", error);
       } finally {
         setLoading(false);
       }
@@ -30,9 +30,9 @@ export default function LandingPage() {
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-6 py-4 flex justify-between items-center max-w-7xl w-full mx-auto rounded-b-2xl shadow-sm">
         <div className="flex items-center gap-2">
           <div className="bg-blue-600 text-white font-black px-3 py-1 rounded-xl text-xs tracking-wider">
-            LMS
+            DKV LMS
           </div>
-          <span className="font-bold text-sm tracking-tight text-slate-800">Ruang Kreatif DKV</span>
+          <span className="font-bold text-sm tracking-tight text-slate-800">Ruang Kreatif Konsentrasi Keahlian DKV</span>
         </div>
         <div className="flex items-center gap-3">
           <Link 
@@ -42,7 +42,7 @@ export default function LandingPage() {
             Masuk
           </Link>
           <Link 
-            href="/register" // Antisipasi jika halaman loginmu punya toggle register
+            href="/register" // Antisipasi jika halaman login ini punya toggle register
             className="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl shadow-sm transition"
           >
             Daftar Sekarang
@@ -51,9 +51,9 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO SECTION */}
-      <header className="py-16 px-6 text-center max-w-3xl mx-auto space-y-4">
+      <header className="py-16 px-6 text-center max-w-4xl mx-auto space-y-4">
         <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950 leading-tight">
-          Asah Skill Desain & Fotografi Bersama <span className="text-blue-600">Para Profesional</span>
+          Asah <br />Skill Desain Komunikasi Visual <br />Bersama <br /><span className="text-blue-600">Para Guru Profesional</span>
         </h1>
         <p className="text-slate-500 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
           Akses modul pembelajaran DKV, bimbingan langsung dari guru terverifikasi, dan bangun portofolio kreatifmu dari sekarang.
@@ -64,7 +64,7 @@ export default function LandingPage() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-6 pb-24">
         <div className="flex justify-between items-center mb-8 border-b border-slate-200 pb-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-950 text-left">Jelajahi Kelas Tersedia</h2>
+            <h2 className="text-xl font-bold text-slate-950 text-left">Jelajahi Kelas yang Tersedia</h2>
             <p className="text-xs text-slate-500 text-left mt-0.5">Katalog materi DKV yang siap kamu pelajari setelah bergabung.</p>
           </div>
           <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
@@ -123,8 +123,8 @@ export default function LandingPage() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400">
-        &copy; {new Date().getFullYear()} LMS Ruang Kreatif DKV. All Rights Reserved.
+      <footer className="sticky border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400 mt-auto">
+        &copy; {new Date().getFullYear()} Tommy Poernomo. All Rights Reserved.
       </footer>
     </div>
   );

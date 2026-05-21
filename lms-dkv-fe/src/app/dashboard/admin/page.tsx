@@ -6,38 +6,58 @@ export default function AdminDashboard() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState(''); 
   const [adminName, setAdminName] = useState('Admin');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [teachers, setTeachers] = useState([]); // State tambahan untuk menampung daftar guru
 
-    // STATE UNTUK MODAL EDIT (UPDATE)
+  // STATE DATA UTAMA
+  const [teachers, setTeachers] = useState([]); 
+  const [totalStudents, setTotalStudents] = useState(0); 
+  const [totalCourses, setTotalCourses] = useState(0);   
+
+  // STATE UNTUK MODAL EDIT (UPDATE)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTeacherId, setEditingTeacherId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
-  // Ambil nama admin yang sedang login dari localStorage
+  // Ambil nama admin saat halaman dimuat
   useEffect(() => {
+
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const parsed = JSON.parse(storedUser);
       setAdminName(parsed.name || 'Admin');
     }
-    fetchTeachers(); // Ambil daftar guru saat halaman dimuat
+    fetchTeachers(); 
+    fetchDashboardStats();
   }, []);
 
-  // Fungsi untuk mengambil daftar guru dari database agar panel admin lebih informatif
+  // Fungsi mengambil daftar guru
   const fetchTeachers = async () => {
     try {
-      const response = await api.get('auth/users'); // Memanggil endpoint get semua user di backend
-      // Filter hanya user yang memiliki role TEACHER
+      const response = await api.get('auth/users'); 
       const filteredTeachers = response.data.filter((u: any) => u.role === 'TEACHER');
       setTeachers(filteredTeachers);
     } catch (err) {
       console.error("Gagal memuat daftar pengajar", err);
+    }
+  };
+
+  // Fungsi mengambil statistik Student & Course
+  const fetchDashboardStats = async () => {
+    try {
+      const userRes = await api.get('auth/users');
+      const students = userRes.data.filter((u: any) => u.role === 'STUDENT');
+      setTotalStudents(students.length);
+
+      const courseRes = await api.get('course');
+      setTotalCourses(courseRes.data.length);
+    } catch (err) {
+      console.error("Gagal memuat statistik dashboard", err);
     }
   };
 
@@ -48,23 +68,34 @@ export default function AdminDashboard() {
     e.preventDefault();
     setError('');
     setSuccess(false);
+
+    if (password !== confirmPassword) {
+      setError('Konfirmasi kata sandi tidak cocok. Silakan periksa kembali.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Menembak endpoint register bawaan NestJS
       await api.post('/auth/register', {
         name,
         email,
         password,
-        role: 'TEACHER', // Dikunci OTOMATIS sebagai TEACHER oleh Admin
+        role: 'TEACHER', 
       });
 
       setSuccess(true);
-      // Bersihkan form setelah sukses
       setName('');
       setEmail('');
       setPassword('');
-      fetchTeachers(); // Refresh daftar tabel guru setelah berhasil menambah data baru
+      setConfirmPassword('');
+      
+      fetchTeachers(); 
+      fetchDashboardStats();
+
+      setTimeout(() => {
+        setSuccess(false);
+      }, 3000);
     } catch (err: any) {
       setError(
         err.response?.data?.message || 
@@ -75,7 +106,7 @@ export default function AdminDashboard() {
     }
   };
 
-// ==========================================
+  // ==========================================
   // 2. PROSES UPDATE: MODAL TRIGGER & SUBMIT
   // ==========================================
   const openEditModal = (teacher: any) => {
@@ -88,11 +119,10 @@ export default function AdminDashboard() {
   const handleUpdateTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setIsEditing(true); // <-- Aktifkan loading saat mulai mengirim data
+    setIsEditing(true); 
     
     try {
       const token = localStorage.getItem('access_token');
-      // Menembak endpoint PATCH/PUT users di backend bawaan
       await api.patch(`/auth/users/${editingTeacherId}`, {
         name: editName,
         email: editEmail,
@@ -102,11 +132,11 @@ export default function AdminDashboard() {
 
       alert('🎉 Data pengajar berhasil diperbarui!');
       setIsEditModalOpen(false);
-      fetchTeachers(); // Refresh data tabel
+      fetchTeachers(); 
     } catch (err: any) {
       alert(err.response?.data?.message || 'Gagal memperbarui data pengajar.');
     } finally {
-      setIsEditing(false); // <-- Matikan loading setelah proses selesai (sukses/gagal)
+      setIsEditing(false); 
     }
   };
 
@@ -117,13 +147,13 @@ export default function AdminDashboard() {
     if (confirm(`⚠️ Apakah Anda yakin ingin menghapus akun pengajar "${teacherName}"?\nSemua kelas yang dibuat oleh pengajar ini mungkin akan ikut terhapus.`)) {
       try {
         const token = localStorage.getItem('access_token');
-        // Menembak endpoint DELETE users di backend
         await api.delete(`/auth/users/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
         alert('✅ Akun pengajar berhasil dihapus dari sistem.');
-        fetchTeachers(); // Refresh data tabel
+        fetchTeachers(); 
+        fetchDashboardStats();
       } catch (err: any) {
         alert(err.response?.data?.message || 'Gagal menghapus pengajar.');
       }
@@ -136,31 +166,72 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="w-full bg-slate-950 text-slate-100 flex flex-col">
       
-      {/* NAVBAR UTAMA */}
-      <nav className="bg-slate-900/60 backdrop-blur-md border-b border-white/5 px-6 py-4 flex justify-between items-center">
+      {/* NAVBAR UTAMA (Premium Look & Sticky) 
+      <nav className="sticky top-0 z-50 bg-slate-950/70 backdrop-blur-md border-b border-white/5 px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 text-white font-black px-3 py-1 rounded-xl text-sm tracking-wider">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold px-3 py-1 rounded-xl text-xs tracking-wider shadow-md shadow-blue-500/20">
             ADMIN
           </div>
-          <span className="font-bold text-sm tracking-tight text-slate-300">LMS Ruang Kreatif</span>
+          <span className="font-bold text-sm tracking-tight text-slate-200">LMS Ruang Kreatif</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-xs text-slate-400">Selamat datang, <strong className="text-blue-400">{adminName}</strong></span>
+          <div className="flex flex-col items-end hidden sm:flex">
+            <span className="text-xs text-slate-400">Masuk sebagai</span>
+            <span className="text-xs font-semibold text-blue-400">{adminName}</span>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3.5 py-1.5 rounded-xl transition font-medium"
+          >
+            Keluar
+          </button>
         </div>
-      </nav>
+      </nav>*/}
 
       {/* KONTEN UTAMA */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-6 md:p-12">
         <div className="mb-8">
           <h1 className="text-3xl font-black tracking-tight text-white">Panel Manajemen Pengajar</h1>
-          <p className="text-slate-400 text-sm mt-1">Daftarkan dan otorisasi guru baru agar dapat mengelola kelas dan materi DKV.</p>
+          <p className="text-slate-400 text-sm mt-1">Daftarkan dan otorisasi guru baru agar dapat mengelola kelas dan materi di Konsentrasi Keahlian DKV.</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+{/* KOTAK INFORMASI STATISTIK */}
+        <div className="grid grid-cols-3 gap-4 md:gap-6 mb-8">
           
-          {/* INFO KANAN/KIRI */}
+          {/* CARD 1: TOTAL GURU */}
+          <div className="bg-white/5 border border-white/5 p-4 md:p-5 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition duration-300">
+            <div className="absolute top-4 right-4 bg-blue-500/10 border border-blue-500/20 w-15 h-15 rounded-xl flex items-center justify-center text-3xl shadow-inner shadow-blue-500/10 group-hover:scale-110 transition duration-300">
+              👨‍🏫
+            </div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Guru</p>
+            <p className="text-2xl md:text-3xl font-black text-white mt-1">{teachers.length}</p>
+          </div>
+
+          {/* CARD 2: TOTAL SISWA */}
+          <div className="bg-white/5 border border-white/5 p-4 md:p-5 rounded-2xl relative overflow-hidden group hover:border-indigo-500/30 transition duration-300">
+            <div className="absolute top-4 right-4 bg-indigo-500/10 border border-indigo-500/20 w-15 h-15 rounded-xl flex items-center justify-center text-3xl shadow-inner shadow-indigo-500/10 group-hover:scale-110 transition duration-300">
+              🎓
+            </div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Siswa</p>
+            <p className="text-2xl md:text-3xl font-black text-white mt-1">{totalStudents}</p>
+          </div>
+
+          {/* CARD 3: TOTAL KELAS */}
+          <div className="bg-white/5 border border-white/5 p-4 md:p-5 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition duration-300">
+            <div className="absolute top-4 right-4 bg-purple-500/10 border border-purple-500/20 w-15 h-15 rounded-xl flex items-center justify-center text-3xl shadow-inner shadow-purple-500/10 group-hover:scale-110 transition duration-300">
+              📚
+            </div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Kelas</p>
+            <p className="text-2xl md:text-3xl font-black text-white mt-1">{totalCourses}</p>
+          </div>
+
+        </div>
+
+        {/* ALUR LAYOUT INPUT & INFORMASI */}
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
+          {/* INFO KIS-KISI HAK AKSES */}
           <div className="md:col-span-1 space-y-4">
             <div className="bg-white/5 border border-white/5 p-5 rounded-2xl">
               <h3 className="font-bold text-sm text-blue-400 mb-2">Hak Akses Guru</h3>
@@ -198,7 +269,7 @@ export default function AdminDashboard() {
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Nama Lengkap Guru</label>
                 <input 
                   type="text" 
-                  placeholder="Contoh: Pak Eko, S.ST." 
+                  placeholder="Contoh: Pak Eko Subiyantoro, S.ST." 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full p-3.5 bg-slate-900 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600 text-sm transition"
@@ -218,16 +289,30 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Kata Sandi Akses</label>
-                <input 
-                  type="password" 
-                  placeholder="Minimal 6-8 karakter aman" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3.5 bg-slate-900 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600 text-sm transition"
-                  required 
-                />
+              {/* DUA KOLOM PASSWORD BERDAMPINGAN */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Kata Sandi Akses</label>
+                  <input 
+                    type="password" 
+                    placeholder="Minimal 6 karakter" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-3.5 bg-slate-900 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600 text-sm transition"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Konfirmasi Kata Sandi</label>
+                  <input 
+                    type="password" 
+                    placeholder="Ketik ulang kata sandi" 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full p-3.5 bg-slate-900 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600 text-sm transition"
+                    required 
+                  />
+                </div>
               </div>
 
               <button 
@@ -258,6 +343,7 @@ export default function AdminDashboard() {
                     <th className="p-3">Nama Lengkap</th>
                     <th className="p-3">Email Akses</th>
                     <th className="p-3">Status Sistem</th>
+                    <th className="p-3 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -270,7 +356,6 @@ export default function AdminDashboard() {
                           {t.role}
                         </span>
                       </td>
-                      {/* KOLOM AKSI EDIT DAN DELETE */}
                       <td className="p-3 text-center space-x-2">
                         <button
                           onClick={() => openEditModal(t)}
@@ -292,12 +377,9 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
-
       </main>
 
-      {/* ==========================================
-          MODAL INTERAKTIF UNTUK EDIT DATA GURU (UPDATE)
-          ========================================== */}
+      {/* MODAL INTERAKTIF UNTUK EDIT DATA GURU (UPDATE) */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-white/10 w-full max-w-md p-6 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
@@ -337,15 +419,15 @@ export default function AdminDashboard() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isEditing} // <-- Mencegah spam klik saat proses berlangsung
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
-    isEditing
-      ? 'bg-blue-400/50 text-white/50 cursor-not-allowed'
-      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white'
-  }`}
->
-  {isEditing ? 'Sedang Memproses...' : 'Simpan Perubahan'}
-</button>
+                  disabled={isEditing}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+                    isEditing
+                      ? 'bg-blue-400/50 text-white/50 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white'
+                  }`}
+                >
+                  {isEditing ? 'Sedang Memproses...' : 'Simpan Perubahan'}
+                </button>
               </div>
             </form>
           </div>
