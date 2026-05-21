@@ -1,6 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Link from 'next/link'; // ✨ Impor Link untuk navigasi antar halaman Next.js
 
 export default function DashboardLayout({
   children,
@@ -11,16 +12,43 @@ export default function DashboardLayout({
   const [name, setName] = useState('');
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setName(JSON.parse(savedUser).name);
-    }
+    // 💡 Jalankan fungsi sinkronisasi nama saat layout pertama kali dimuat
+    syncProfileName();
+
+    // Membuat event listener kustom agar ketika halaman /profile sukses menyimpan data,
+    // komponen Navbar ini langsung mendeteksi perubahan nama secara instan.
+    window.addEventListener('storage', syncProfileName);
+    window.addEventListener('profileUpdated', syncProfileName);
+
+    return () => {
+      window.removeEventListener('storage', syncProfileName);
+      window.removeEventListener('profileUpdated', syncProfileName);
+    };
   }, []);
 
-  const handleLogout = () => {
+  const syncProfileName = () => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        setName(JSON.parse(savedUser).name);
+      } catch (e) {
+        console.error("Gagal membaca objek user di layout", e);
+      }
+    }
+  };
+
+const handleLogout = () => {
     if (confirm('Apakah Anda yakin ingin keluar?')) {
-      localStorage.clear(); // Hapus token dan data user
-      window.location.href = '/login'; // Tendang ke halaman login
+      // 1. Bersihkan session data
+      localStorage.clear(); 
+      
+      // 2. ✨ Pindahkan halaman dengan router bawaan Next.js secara aman
+      router.push('/login'); 
+      
+      // 3. (Opsional) Refresh singkat setelah berpindah untuk memastikan state benar-benar kosong
+      setTimeout(() => {
+        router.refresh();
+      }, 100);
     }
   };
 
@@ -29,18 +57,28 @@ export default function DashboardLayout({
       {/* NAVBAR ATAS (Nuansa Biru DKV) */}
       <nav className="sticky top-0 z-50 bg-blue-950 text-white px-8 py-4 flex justify-between items-center shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg font-bold text-sm tracking-wider">DKV LMS</div>
-          {/*<span className="font-semibold text-lg tracking-wide">DKV LMS</span> */}
+          <Link href="/dashboard" className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg font-bold text-sm tracking-wider transition-all">
+            DKV LMS
+          </Link>
         </div>
         
-        <div className="flex items-center gap-6">
-          <span className="text-xs text-slate-400">Masuk sebagai</span>
-          <span className="text-sm bg-blue-900/50 px-4 py-2 rounded-full border border-blue-800">
+        <div className="flex items-center gap-4 flex-wrap">
+          <span className="text-xs text-slate-400 hidden sm:inline">Masuk sebagai</span>
+          <span className="text-sm bg-blue-900/50 px-4 py-2 rounded-full border border-blue-800 font-bold">
             👤 {name || 'Pengguna'}
           </span>
+          
+          {/* ✨ TOMBOL EDIT PROFIL BARU: Muncul universal untuk Admin, Guru, dan Siswa */}
+          <Link 
+            href="/dashboard/profile" 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition border border-blue-500/30 shadow-sm"
+          >
+            ⚙️ Edit Profil
+          </Link>
+
           <button 
             onClick={handleLogout}
-            className="bg-red-500/20 hover:bg-red-600 text-red-300 hover:text-white px-4 py-2 rounded-xl text-sm font-medium transition border border-red-500/30"
+            className="bg-red-500/10 hover:bg-red-600 text-red-300 hover:text-white px-4 py-2 rounded-xl text-sm font-medium transition border border-red-500/20"
           >
             Keluar (Logout)
           </button>
@@ -51,10 +89,11 @@ export default function DashboardLayout({
       <main className="flex-1">
         {children}
       </main>
-      {/* FOOTER (Sticky Mode Enabled) */}
+
+      {/* FOOTER */}
       <footer className="sticky border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400 w-full mt-auto">
         &copy; {new Date().getFullYear()} Tommy Poernomo. All Rights Reserved.
       </footer>
-      </div>
+    </div>
   );
 }

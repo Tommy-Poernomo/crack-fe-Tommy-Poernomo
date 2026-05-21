@@ -17,7 +17,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   // State Navigasi Tab Kontrol
   const [activeTab, setActiveTab] = useState<'materi' | 'tugas'>('materi');
 
-  // State Form Bab Materi
+  // State Form Bab Materi (Lessons)
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonContent, setLessonContent] = useState('');
   const [isSubmittingLesson, setIsSubmittingLesson] = useState(false);
@@ -32,26 +32,41 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [assignmentDueDate, setAssignmentDueDate] = useState('');
   const [isSubmittingAssignment, setIsSubmittingAssignment] = useState(false);
 
+  // ✨ STATE BARU: Untuk mengontrol pengeditan tugas (Assignment)
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
+  const [editAssignTitle, setEditAssignTitle] = useState('');
+  const [editAssignInstruction, setEditAssignInstruction] = useState('');
+  const [editAssignDueDate, setEditAssignDueDate] = useState('');
+  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
+
   useEffect(() => {
     fetchCourseData();
   }, [courseId]);
 
-  const fetchCourseData = async () => {
+const fetchCourseData = async () => {
     try {
       const token = localStorage.getItem('access_token');
       const headers = { Authorization: `Bearer ${token}` };
       
-      // 1. Ambil info kursus beserta materi lessons (melalui include prisma backend)
+      // 1. Ambil info kursus beserta materi lessons
       const courseResponse = await api.get(`/course/${courseId}`, { headers });
       const courseData = courseResponse.data;
       setCourse(courseData);
+      
       if (courseData && courseData.lessons) {
-        setLessons(courseData.lessons);
+        // ✨ KUNCI UTAMA SORTING MATERI: 
+        // Mengurutkan array lessons berdasarkan ID terkecil ke terbesar secara permanen di browser
+        const sortedLessons = [...courseData.lessons].sort((a: any, b: any) => a.id - b.id);
+        setLessons(sortedLessons);
       }
 
       // 2. Ambil daftar tugas resmi dari endpoint /assignments
       const assignmentsResponse = await api.get(`/assignments?courseId=${courseId}`, { headers });
-      setAssignments(assignmentsResponse.data || []);
+      
+      // ✨ OPSIONAL: Kita urutkan juga daftarnya berdasarkan ID agar tugas tidak ikut lompat saat di-edit
+      const sortedAssignments = (assignmentsResponse.data || []).sort((a: any, b: any) => a.id - b.id);
+      setAssignments(sortedAssignments);
+
     } catch (error) {
       console.error("Gagal memuat detail data kelas", error);
     } finally {
@@ -138,11 +153,92 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       setAssignmentTitle('');
       setAssignmentInstruction('');
       setAssignmentDueDate('');
-      fetchCourseData(); // Refresh data tugas
+      fetchCourseData(); 
     } catch (error: any) {
       alert('Gagal menerbitkan tugas: ' + (error.response?.data?.message || 'Eror API'));
     } finally {
       setIsSubmittingAssignment(false);
+    }
+  };
+
+  // ✨ HANDLER BARU: Membuka mode pengeditan tugas dan mengisi form dengan data lama
+  const startEditAssignment = (assign: any) => {
+    setEditingAssignmentId(assign.id);
+    setEditAssignTitle(assign.title);
+    setEditAssignInstruction(assign.instruction || '');
+    
+    // Format tanggal agar sesuai dengan input type="datetime-local" (YYYY-MM-DDTHH:MM)
+    if (assign.dueDate) {
+      const date = new Date(assign.dueDate);
+      const tzOffset = date.getTimezoneOffset() * 60000; // offset dalam milidetik
+      const localISOTime = (new Date(date.getTime() - tzOffset)).toISOString().slice(0, 16);
+      setEditAssignDueDate(localISOTime);
+    } else {
+      setEditAssignDueDate('');
+    }
+  };
+
+// ✨ HANDLER UPDATE TUGAS (Dilengkapi Konversi ISO Tanggal)
+  const handleUpdateAssignment = async (assignmentId: number) => {
+    if (editAssignTitle.length < 3) return alert('Nama / Tema tugas minimal 3 karakter!');
+    if (!editAssignDueDate) return alert('Tenggat waktu penyerahan wajib diisi!');
+    
+    setIsUpdatingAssignment(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      
+      // ✨ KUNCI UTAMA FE: Ubah teks tanggal mentah browser menjadi objek Waktu ISO resmi
+      const isoFormattedDate = new Date(editAssignDueDate).toISOString();
+
+      await api.patch(`/assignments/${assignmentId}`, 
+        { 
+          title: editAssignTitle, 
+          instruction: editAssignInstruction, 
+          dueDate: isoFormattedDate // Kirim tanggal yang sudah berstandar ISO
+        }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      alert('✏️ Perubahan instruksi tugas berhasil disimpan!');
+      setEditingAssignmentId(null);
+      fetchCourseData(); // Memperbarui data list tugas di layar
+    } catch (error: any) {
+      console.error("Eror detail update tugas:", error.response?.data || error.message);
+      alert('Gagal memperbarui data tugas: ' + (error.response?.data?.message || 'Eror internal server'));
+    } finally {
+      setIsUpdatingAssignment(false);
+    }
+  };
+
+  const handleHapusTugas = async (assignmentId: number) => {
+    if (confirm('Apakah Anda yakin ingin menghapus instruksi tugas ini?')) {
+      try {
+        const token = localStorage.getItem('access_token');
+        await api.delete(`/assignments/${assignmentId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('❌ Tugas berhasil dihapus dari sistem!');
+        fetchCourseData();
+      } catch (error) {
+        alert('Gagal menghapus tugas');
+      }
+    }
+  };
+
+  const handleSetExpiredSimulasi = async (assignmentId: number) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const sepuluhMenitLalu = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      
+      await api.patch(`/assignments/${assignmentId}`, 
+        { dueDate: sepuluhMenitLalu },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      alert('⚡ Berhasil! Tugas ini sekarang disimulasikan telah EXPIRED. Silakan cek statusnya di akun siswa!');
+      fetchCourseData(); 
+    } catch (error) {
+      alert('Gagal memperbarui batas waktu simulasi');
     }
   };
 
@@ -249,7 +345,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         {/* KONTEN TAB 2: PENGELOLAAN TUGAS */}
         {activeTab === 'tugas' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* SISI KIRI: FORM INSTURKSI TUGAS KARYA */}
+            {/* SISI KIRI: FORM INSTRUKSI TUGAS KARYA */}
             <div className="md:col-span-1">
               <div className="bg-white p-6 rounded-2xl border border-blue-100 shadow-sm sticky top-24">
                 <h3 className="text-lg font-bold text-blue-950 mb-4">📐 Buat Tugas Gambar</h3>
@@ -296,7 +392,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               </div>
             </div>
 
-            {/* SISI KANAN: LIST DAFTAR TUGAS AKTIF GURU */}
+            {/* SISI KANAN: LIST DAFTAR TUGAS AKTIF GURU DENGAN UTALITAS EDIT & HAPUS */}
             <div className="md:col-span-2 space-y-4">
               <h3 className="text-lg font-bold text-blue-950 px-1">📊 Status Penugasan Berjalan</h3>
               
@@ -307,23 +403,103 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               ) : (
                 assignments.map((assign: any) => (
                   <div key={assign.id} className="bg-white p-6 rounded-2xl border border-blue-100 shadow-sm hover:border-blue-300 transition-all">
-                    <div className="flex justify-between items-start gap-4">
-                      <div>
-                        <h4 className="font-bold text-blue-900 text-base">🎯 {assign.title}</h4>
-                        <p className="text-xs font-bold text-amber-600 mt-1">
-                          📅 Batas Waktu: {new Date(assign.dueDate).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })} WITA
-                        </p>
+                    
+                    {/* ✨ FORM MODE EDIT AKTIF JIKA ID TUGAS COCOK */}
+                    {editingAssignmentId === assign.id ? (
+                      <div className="space-y-4 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
+                        <div>
+                          <label className="block text-xs font-bold text-amber-800 uppercase mb-1">Edit Nama Tugas</label>
+                          <input 
+                            type="text" 
+                            value={editAssignTitle} 
+                            onChange={(e) => setEditAssignTitle(e.target.value)} 
+                            className="w-full p-2.5 border border-amber-200 bg-white rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-amber-500" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-amber-800 uppercase mb-1">Edit Instruksi Tugas</label>
+                          <textarea 
+                            value={editAssignInstruction} 
+                            onChange={(e) => setEditAssignInstruction(e.target.value)} 
+                            className="w-full p-2.5 border border-amber-200 bg-white rounded-xl text-sm h-28 text-slate-700 outline-none focus:border-amber-500" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-amber-800 uppercase mb-1">Edit Batas Waktu (WITA)</label>
+                          <input 
+                            type="datetime-local" 
+                            value={editAssignDueDate} 
+                            onChange={(e) => setEditAssignDueDate(e.target.value)} 
+                            className="w-full p-2.5 border border-amber-200 bg-white rounded-xl text-sm text-slate-700 outline-none focus:border-amber-500" 
+                          />
+                        </div>
+                        <div className="flex gap-2 justify-end pt-2 border-t border-amber-100">
+                          <button 
+                            type="button"
+                            onClick={() => setEditingAssignmentId(null)} 
+                            className="px-4 py-2 text-xs font-bold text-slate-500 hover:underline"
+                          >
+                            Batal
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleUpdateAssignment(assign.id)} 
+                            disabled={isUpdatingAssignment} 
+                            className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition shadow-sm"
+                          >
+                            {isUpdatingAssignment ? 'Menyimpan...' : 'Simpan Perubahan'}
+                          </button>
+                        </div>
                       </div>
-                      <Link 
-                        href={`/dashboard/teacher/courses/${courseId}/assignments/${assign.id}`} 
-                        className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg border border-blue-100 transition-all shrink-0"
-                      >
-                        Lihat Showcase 🖼️
-                      </Link>
-                    </div>
-                    <p className="text-slate-600 text-sm mt-3 border-t border-slate-50 pt-3 whitespace-pre-line leading-relaxed">
-                      {assign.instruction}
-                    </p>
+                    ) : (
+                      /* TAMPILAN NORMAL JIKA TIDAK SEDANG DIEDIT */
+                      <>
+                        <div className="flex flex-wrap justify-between items-start gap-4">
+                          <div>
+                            <h4 className="font-bold text-blue-900 text-base">🎯 {assign.title}</h4>
+                            <p className="text-xs font-bold text-amber-600 mt-1">
+                              📅 Batas Waktu: {new Date(assign.dueDate).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })} WITA
+                            </p>
+                          </div>
+                          
+                          {/* PANEL KENDALI GURU */}
+                          <div className="flex gap-1.5 items-center flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => startEditAssignment(assign)}
+                              className="text-[11px] bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 font-extrabold px-2.5 py-1.5 rounded-lg border border-slate-200/60 transition"
+                              title="Edit judul, instruksi, atau batas waktu tugas ini"
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetExpiredSimulasi(assign.id)}
+                              className="text-[11px] bg-amber-50 hover:bg-amber-200 text-amber-800 font-extrabold px-2.5 py-1.5 rounded-lg border border-amber-100 transition"
+                              title="Klik untuk langsung mengubah tugas ini menjadi kedaluwarsa seketika"
+                            >
+                              ⏳ Set Expired
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleHapusTugas(assign.id)}
+                              className="text-[11px] bg-red-50 hover:bg-red-100 text-red-600 font-extrabold px-2.5 py-1.5 rounded-lg border border-red-100 transition"
+                            >
+                              🗑️ Hapus
+                            </button>
+                            <Link 
+                              href={`/dashboard/teacher/courses/${courseId}/assignments/${assign.id}`} 
+                              className="text-[11px] font-bold bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-2.5 py-1.5 rounded-lg border border-blue-100 transition-all shrink-0"
+                            >
+                              Showcase 🖼️
+                            </Link>
+                          </div>
+                        </div>
+                        <p className="text-slate-600 text-sm mt-3 border-t border-slate-50 pt-3 whitespace-pre-line leading-relaxed">
+                          {assign.instruction}
+                        </p>
+                      </>
+                    )}
                   </div>
                 ))
               )}

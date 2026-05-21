@@ -25,16 +25,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      suppressHydrationWarning
-    >
-<body >
+    <html lang="en" suppressHydrationWarning={true}>
+      {/* ✨ PASANG DI SINI: Menghalau manipulasi atribut dari ekstensi browser */}
+      <body suppressHydrationWarning={true}>
         {children}
       </body>
     </html>
