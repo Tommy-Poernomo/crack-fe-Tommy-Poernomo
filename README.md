@@ -94,7 +94,7 @@ e. Launch your browser and explore the running module at `http://localhost:3001.
 ![Landing Page](./lms-dkv-fe/assets/Public%20Landing%20Page.jpg)
 
 ### Login page
-![Login Page Layout](./lms-dkv-fe/assets/Login%20Page%20Rev1.jpg)
+![Login Page Layout](./lms-dkv-fe/assets/Login%20Page%20rev1.jpg)
 
 ### Admin Panel & Teacher Register
 ![Admin CRUD](./lms-dkv-fe/assets/Dashboard%20-%20Admin%20&%20Register%20Page%20-%20Teacher%20Rev1.jpg)
