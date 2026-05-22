@@ -91,19 +91,19 @@ e. Launch your browser and explore the running module at `http://localhost:3001.
 ## 📷 Screenshots & Visual Demo
 
 ### Public Landing Page
-![Landing Page](./assets/Public%20Landing%20Page.jpg)
+![Landing Page](/assets/Public%20Landing%20Page.jpg)
 
 ### Login page
-![Login Page Layout](./assets/Login%20Page%20Rev1.jpg)
+![Login Page Layout](./lms-dkv-fe/assets/Login%20Page%20Rev1.jpg)
 
 ### Admin Panel & Teacher Register
-![Admin CRUD](./assets/Dashboard%20-%20Admin%20&%20Register%20Page%20-%20Teacher%20Rev1.jpg)
+![Admin CRUD](./lms-dkv-fe/assets/Dashboard%20-%20Admin%20&%20Register%20Page%20-%20Teacher%20Rev1.jpg)
 
 ### Teacher Course Dashboard
-![Teacher Dashboard](./assets/Dashboard%20Teacher.jpg)
+![Teacher Dashboard](./lms-dkv-fe/assets/Dashboard%20Teacher.jpg)
 
 ### Student Learning Tracking (Dashboard)
-![Student Dashboard](./assets/Dashboard%20Student.jpg)
+![Student Dashboard](./lms-dkv-fe/assets/Dashboard%20Student.jpg)
 
 ---
 ## 👩‍💻 Author
