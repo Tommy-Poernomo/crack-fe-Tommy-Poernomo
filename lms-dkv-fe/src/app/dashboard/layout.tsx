@@ -10,9 +10,12 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const [name, setName] = useState('');
+  
+  // ✨ STATE BARU: Menampung data role user secara dinamis
+  const [role, setRole] = useState('');
 
   useEffect(() => {
-    // 💡 Jalankan fungsi sinkronisasi nama saat layout pertama kali dimuat
+    // 💡 Jalankan fungsi sinkronisasi data profile saat layout pertama kali dimuat
     syncProfileName();
 
     // Membuat event listener kustom agar ketika halaman /profile sukses menyimpan data,
@@ -30,14 +33,21 @@ export default function DashboardLayout({
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
-        setName(JSON.parse(savedUser).name);
+        const parsed = JSON.parse(savedUser);
+        setName(parsed.name || '');
+        
+        // ✨ SINKRONISASI ROLE: Ambil nilai role dari payload objek user
+        setRole(parsed.role || '');
       } catch (e) {
         console.error("Gagal membaca objek user di layout", e);
       }
+    } else {
+      // Fallback data terpisah jika dibutuhkan
+      setRole(localStorage.getItem('user_role') || '');
     }
   };
 
-const handleLogout = () => {
+  const handleLogout = () => {
     if (confirm('Apakah Anda yakin ingin keluar?')) {
       // 1. Bersihkan session data
       localStorage.clear(); 
@@ -63,11 +73,24 @@ const handleLogout = () => {
         </div>
         
         <div className="flex items-center gap-4 flex-wrap">
-          <span className="text-xs text-slate-400 hidden sm:inline">Masuk sebagai</span>
+
+          {/* INFORMASI NAMA USER */}
           <span className="text-sm bg-blue-900/50 px-4 py-2 rounded-full border border-blue-800 font-bold">
             👤 {name || 'Pengguna'}
           </span>
           
+          {/* SAKLAR INDIKATOR ROLE YANG DINAMIS DI SEBELAH NAMA */}
+          <span className="text-xs text-slate-400 hidden sm:inline">Masuk sebagai</span>
+          {role && (
+            <span className={`text-[10px] font-extrabold px-3 py-1.5 rounded-xl uppercase tracking-wider border shadow-sm ${
+              role === 'ADMIN' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
+              role === 'TEACHER' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+              'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+            }`}>
+              🔑 {role}
+            </span>
+          )}
+                    
           {/* ✨ TOMBOL EDIT PROFIL BARU: Muncul universal untuk Admin, Guru, dan Siswa */}
           <Link 
             href="/dashboard/profile" 
