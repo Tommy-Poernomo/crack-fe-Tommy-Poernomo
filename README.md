@@ -91,7 +91,7 @@ e. Launch your browser and explore the running module at `http://localhost:3001.
 ## 📷 Screenshots & Visual Demo
 
 ### Public Landing Page
-![Landing Page](/assets/Public%20Landing%20Page.jpg)
+![Landing Page](./lms-dkv-fe/assets/Public%20Landing%20Page.jpg)
 
 ### Login page
 ![Login Page Layout](./lms-dkv-fe/assets/Login%20Page%20Rev1.jpg)
